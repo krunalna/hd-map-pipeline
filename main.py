@@ -59,6 +59,12 @@ def main():
     print(f"  Dead ends          : {len(issues['dead_ends'])}")
     print(f"  Missing lane edges : {len(issues['missing_lane_edges'])}")
     print(f"  Disconnected       : {issues['disconnected']} ({len(issues['components'])} components)")
+    class_labels = {1: "motorway/trunk", 2: "motorway/trunk", 3: "primary/secondary",
+                    4: "primary/secondary", 5: "tertiary/residential", 6: "tertiary/residential",
+                    7: "service/unclassified", 8: "other"}
+    for rc in sorted(issues["missing_lanes_by_class"]):
+        count = len(issues["missing_lanes_by_class"][rc])
+        print(f"    class {rc} ({class_labels.get(rc, 'other')}): {count} edges")
 
     visualize(G, issues, location)
     if not args.no_interactive:

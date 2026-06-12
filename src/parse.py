@@ -1,5 +1,15 @@
 import networkx as nx
 
+ROAD_CLASS = {
+    "motorway": 1,       "motorway_link": 1,
+    "trunk": 2,          "trunk_link": 2,
+    "primary": 3,        "primary_link": 3,
+    "secondary": 4,      "secondary_link": 4,
+    "tertiary": 5,       "tertiary_link": 5,
+    "residential": 6,    "living_street": 6,
+    "service": 7,        "unclassified": 7,
+}
+
 
 def build_graph(osm_data: dict) -> nx.DiGraph:
     G = nx.DiGraph()
@@ -13,8 +23,10 @@ def build_graph(osm_data: dict) -> nx.DiGraph:
     for way in ways:
         tags = way.get("tags", {})
         oneway = tags.get("oneway", "no") == "yes"
+        highway = tags.get("highway")
         edge_attrs = {
-            "highway": tags.get("highway"),
+            "highway": highway,
+            "road_class": ROAD_CLASS.get(highway, 8),
             "lanes": tags.get("lanes"),
             "name": tags.get("name"),
             "maxspeed": tags.get("maxspeed"),
