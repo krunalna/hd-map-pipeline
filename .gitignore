@@ -4,15 +4,10 @@ __pycache__/
 *.pyo
 .env
 
-# Generated outputs — large files, not source
+# Generated outputs — data files, not source
 output/raw_osm.json
 output/raw_bbox.json
-output/graph.png
 output/graph.html
-output/demo.gif
-
-# Keep output dir itself
-!output/.gitkeep
 
 # macOS
 .DS_Store
