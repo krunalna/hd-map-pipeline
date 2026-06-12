@@ -6,6 +6,7 @@ from src.ingest import query_osm, save_raw, geocode_location, FORT_SMITH_DOWNTOW
 from src.parse import build_graph, clip_to_bbox
 from src.health import run_health_checks
 from src.visualize import visualize
+from src.visualize_interactive import visualize_interactive
 
 RAW_PATH = "output/raw_osm.json"
 BBOX_PATH = "output/raw_bbox.json"
@@ -19,6 +20,8 @@ def main():
                         help="Bounding box radius in km around geocoded point (default: 0.75)")
     parser.add_argument("--force-fetch", action="store_true",
                         help="Re-fetch from Overpass even if cache exists")
+    parser.add_argument("--no-interactive", action="store_true",
+                        help="Skip interactive HTML map, generate PNG only")
     args = parser.parse_args()
 
     if args.location:
@@ -58,6 +61,8 @@ def main():
     print(f"  Disconnected       : {issues['disconnected']} ({len(issues['components'])} components)")
 
     visualize(G, issues, location)
+    if not args.no_interactive:
+        visualize_interactive(G, issues, location)
 
 
 if __name__ == "__main__":
