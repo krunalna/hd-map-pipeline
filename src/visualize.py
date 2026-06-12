@@ -2,20 +2,14 @@ import matplotlib.pyplot as plt
 import networkx as nx
 
 
-def visualize(G: nx.DiGraph, issues: dict, bbox: dict, save_path: str = "output/graph.png"):
-    in_bounds = {
-        n for n in G.nodes
-        if bbox["south"] <= G.nodes[n]["lat"] <= bbox["north"]
-        and bbox["west"] <= G.nodes[n]["lon"] <= bbox["east"]
-    }
-    G = G.subgraph(in_bounds)
+def visualize(G: nx.DiGraph, issues: dict, location: str = "Road Network", save_path: str = "output/graph.png"):
     pos = {n: (G.nodes[n]["lon"], G.nodes[n]["lat"]) for n in G.nodes}
 
-    missing_lane_edges = {(u, v) for u, v in issues["missing_lane_edges"] if u in pos and v in pos}
+    missing_lane_edges = set(issues["missing_lane_edges"])
     normal_edges = [(u, v) for u, v in G.edges() if (u, v) not in missing_lane_edges]
 
-    dead_end_set = set(issues["dead_ends"]) & in_bounds
-    isolated_set = set(issues["isolated_nodes"]) & in_bounds
+    dead_end_set = set(issues["dead_ends"])
+    isolated_set = set(issues["isolated_nodes"])
     normal_nodes = [n for n in G.nodes if n not in dead_end_set and n not in isolated_set]
 
     _, ax = plt.subplots(figsize=(14, 10))
@@ -47,7 +41,7 @@ def visualize(G: nx.DiGraph, issues: dict, bbox: dict, save_path: str = "output/
     ax.legend(handles=legend_elements, loc="upper left", fontsize=8)
 
     title = (
-        f"Fort Smith Downtown — "
+        f"{location} — "
         f"{len(isolated_set)} isolated, "
         f"{len(dead_end_set)} dead ends, "
         f"{len(missing_lane_edges)} edges missing lane data, "
@@ -70,7 +64,8 @@ if __name__ == "__main__":
     with open("output/raw_osm.json") as f:
         data = json.load(f)
 
+    from src.parse import clip_to_bbox
     from src.ingest import FORT_SMITH_DOWNTOWN
-    G = build_graph(data)
+    G = clip_to_bbox(build_graph(data), FORT_SMITH_DOWNTOWN)
     issues = run_health_checks(G)
-    visualize(G, issues, FORT_SMITH_DOWNTOWN)
+    visualize(G, issues, "Fort Smith Downtown")

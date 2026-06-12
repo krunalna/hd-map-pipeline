@@ -1,24 +1,53 @@
+import argparse
 import json
 import os
 
-from src.ingest import query_osm, save_raw, FORT_SMITH_DOWNTOWN
-from src.parse import build_graph
+from src.ingest import query_osm, save_raw, geocode_location, FORT_SMITH_DOWNTOWN
+from src.parse import build_graph, clip_to_bbox
 from src.health import run_health_checks
 from src.visualize import visualize
 
 RAW_PATH = "output/raw_osm.json"
+BBOX_PATH = "output/raw_bbox.json"
 
 
-def main(force_fetch: bool = False):
+def main():
+    parser = argparse.ArgumentParser(description="HD Map Pipeline")
+    parser.add_argument("--location", type=str, default=None,
+                        help="Place name to geocode (e.g. 'BT Kawde Road, Pune')")
+    parser.add_argument("--radius", type=float, default=0.75,
+                        help="Bounding box radius in km around geocoded point (default: 0.75)")
+    parser.add_argument("--force-fetch", action="store_true",
+                        help="Re-fetch from Overpass even if cache exists")
+    args = parser.parse_args()
+
+    if args.location:
+        bbox = geocode_location(args.location, radius_km=args.radius)
+        location = args.location
+        force_fetch = True
+    else:
+        force_fetch = args.force_fetch
+        if not force_fetch and os.path.exists(BBOX_PATH):
+            with open(BBOX_PATH) as f:
+                cached = json.load(f)
+            bbox = cached["bbox"]
+            location = cached["location"]
+        else:
+            bbox = FORT_SMITH_DOWNTOWN
+            location = "Fort Smith Downtown"
+
     if not force_fetch and os.path.exists(RAW_PATH):
         print(f"Using cached data from {RAW_PATH}")
         with open(RAW_PATH) as f:
             data = json.load(f)
     else:
-        data = query_osm(FORT_SMITH_DOWNTOWN)
+        data = query_osm(bbox)
         save_raw(data)
+        os.makedirs("output", exist_ok=True)
+        with open(BBOX_PATH, "w") as f:
+            json.dump({"bbox": bbox, "location": location}, f, indent=2)
 
-    G = build_graph(data)
+    G = clip_to_bbox(build_graph(data), bbox)
     print(f"Graph: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
 
     issues = run_health_checks(G)
@@ -28,7 +57,7 @@ def main(force_fetch: bool = False):
     print(f"  Missing lane edges : {len(issues['missing_lane_edges'])}")
     print(f"  Disconnected       : {issues['disconnected']} ({len(issues['components'])} components)")
 
-    visualize(G, issues, FORT_SMITH_DOWNTOWN)
+    visualize(G, issues, location)
 
 
 if __name__ == "__main__":

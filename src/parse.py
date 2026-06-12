@@ -30,6 +30,15 @@ def build_graph(osm_data: dict) -> nx.DiGraph:
     return G
 
 
+def clip_to_bbox(G: nx.DiGraph, bbox: dict) -> nx.DiGraph:
+    in_bounds = {
+        n for n in G.nodes
+        if bbox["south"] <= G.nodes[n]["lat"] <= bbox["north"]
+        and bbox["west"] <= G.nodes[n]["lon"] <= bbox["east"]
+    }
+    return G.subgraph(in_bounds).copy()
+
+
 if __name__ == "__main__":
     import json
 

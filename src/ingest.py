@@ -1,8 +1,11 @@
+import math
 import requests
 import json
 import os
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+HEADERS = {"User-Agent": "hd-map-pipeline/1.0 (research project)"}
 
 FORT_SMITH_DOWNTOWN = {
     "south": 35.3820,
@@ -10,6 +13,34 @@ FORT_SMITH_DOWNTOWN = {
     "north": 35.3900,
     "east": -94.4200
 }
+
+
+def geocode_location(query: str, radius_km: float = 0.75) -> dict:
+    """Convert a place name to a bounding box using Nominatim."""
+    response = requests.get(
+        NOMINATIM_URL,
+        params={"q": query, "format": "json", "limit": 1},
+        headers=HEADERS,
+    )
+    response.raise_for_status()
+    results = response.json()
+    if not results:
+        raise ValueError(f"No results found for: {query!r}")
+
+    lat = float(results[0]["lat"])
+    lon = float(results[0]["lon"])
+    print(f"Geocoded '{query}' → lat={lat:.4f}, lon={lon:.4f}")
+
+    # convert km radius to degrees
+    delta_lat = radius_km / 111.0
+    delta_lon = radius_km / (111.0 * math.cos(math.radians(lat)))
+
+    return {
+        "south": round(lat - delta_lat, 6),
+        "north": round(lat + delta_lat, 6),
+        "west": round(lon - delta_lon, 6),
+        "east": round(lon + delta_lon, 6),
+    }
 
 def query_osm(bbox: dict) -> dict:
     """
@@ -21,14 +52,14 @@ def query_osm(bbox: dict) -> dict:
     way["highway"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']})->.roads;
     node(w.roads)->.nodes;
     (.roads; .nodes;);
-    out skel qt;
+    out body qt;
     """
 
     print(f"Querying Overpass API for bounding box: {bbox}")
     response = requests.post(
         OVERPASS_URL,
         data={"data": overpass_query.strip()},
-        headers={"User-Agent": "hd-map-pipeline/1.0 (research project)"},
+        headers=HEADERS,
     )
     response.raise_for_status()
 
