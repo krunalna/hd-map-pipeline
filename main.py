@@ -71,6 +71,8 @@ def main():
         print(f"  Turn restriction breakdown:")
         for rtype, items in sorted(issues["turn_restrictions_by_type"].items()):
             print(f"    {rtype}: {len(items)}")
+    print(f"  Oneway conflicts   : {len(issues['oneway_conflicts'])}")
+    print(f"  Oneway sink nodes  : {len(issues['oneway_sink_nodes'])}")
 
     visualize(G, issues, location)
     if not args.no_interactive:

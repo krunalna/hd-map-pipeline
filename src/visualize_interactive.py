@@ -115,6 +115,51 @@ def visualize_interactive(
     layer_dead_ends.add_to(m)
     layer_isolated.add_to(m)
 
+    # --- oneway audit layers ---
+    oneway_conflict_set = set(issues.get("oneway_conflicts", []))
+    oneway_sink_set = set(issues.get("oneway_sink_nodes", []))
+
+    layer_oneway_conflicts = folium.FeatureGroup(name="Oneway conflicts", show=True)
+    for u, v in oneway_conflict_set:
+        if u not in G.nodes or v not in G.nodes:
+            continue
+        folium.PolyLine(
+            [[G.nodes[u]["lat"], G.nodes[u]["lon"]], [G.nodes[v]["lat"], G.nodes[v]["lon"]]],
+            color="#ff006e",
+            weight=4,
+            opacity=0.9,
+            dash_array="8 4",
+            tooltip="Oneway conflict",
+            popup=folium.Popup(
+                f"<b>Oneway conflict</b><br>Edge {u} → {v}<br>Reverse edge also exists",
+                max_width=220,
+            ),
+        ).add_to(layer_oneway_conflicts)
+
+    layer_oneway_sinks = folium.FeatureGroup(name="Oneway sink nodes", show=True)
+    for n in oneway_sink_set:
+        if n not in G.nodes:
+            continue
+        nd = G.nodes[n]
+        folium.CircleMarker(
+            location=[nd["lat"], nd["lon"]],
+            radius=7,
+            color="#fb5607",
+            fill=True,
+            fill_color="#fb5607",
+            fill_opacity=0.85,
+            tooltip="Oneway sink",
+            popup=folium.Popup(
+                f"<b>Oneway sink node</b><br>Node {n}<br>"
+                f"In-degree (oneway): {sum(1 for _, v, d in G.in_edges(n, data=True) if d.get('oneway'))}<br>"
+                f"No oneway exit",
+                max_width=220,
+            ),
+        ).add_to(layer_oneway_sinks)
+
+    layer_oneway_conflicts.add_to(m)
+    layer_oneway_sinks.add_to(m)
+
     # --- turn restriction via nodes ---
     layer_restrictions = folium.FeatureGroup(name="Turn restrictions", show=True)
     for r in issues.get("turn_restrictions", []):
@@ -155,6 +200,8 @@ def visualize_interactive(
         <span style="color:orange">&#9679;</span> Dead end ({len(dead_end_set)})<br>
         <span style="color:red">&#9679;</span> Isolated ({len(isolated_set)})<br>
         <span style="color:#6a0dad">&#9679;</span> Turn restriction ({len(issues.get('turn_restrictions', []))})<br>
+        <span style="color:#ff006e; font-size:10px">&#9644; &#9644;</span> Oneway conflict ({len(issues.get('oneway_conflicts', []))})<br>
+        <span style="color:#fb5607">&#9679;</span> Oneway sink ({len(issues.get('oneway_sink_nodes', []))})<br>
         <hr style="margin:4px 0">
         Components: {len(issues['components'])}
     </div>

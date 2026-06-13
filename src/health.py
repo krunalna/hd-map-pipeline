@@ -15,6 +15,20 @@ def run_health_checks(G: nx.DiGraph, restrictions: list | None = None) -> dict:
     for r in restrictions:
         restriction_by_type.setdefault(r["type"], []).append(r)
 
+    # oneway audit
+    oneway_conflicts = [
+        (u, v) for u, v, d in G.edges(data=True)
+        if d.get("oneway") and G.has_edge(v, u)
+    ]
+    oneway_subgraph = nx.DiGraph()
+    oneway_subgraph.add_edges_from(
+        (u, v) for u, v, d in G.edges(data=True) if d.get("oneway")
+    )
+    oneway_sink_nodes = [
+        n for n in oneway_subgraph.nodes
+        if oneway_subgraph.in_degree(n) > 0 and oneway_subgraph.out_degree(n) == 0
+    ]
+
     issues = {
         "isolated_nodes": list(nx.isolates(G)),
         "dead_ends": [n for n in G.nodes if G.out_degree(n) == 0 and G.in_degree(n) > 0],
@@ -23,6 +37,8 @@ def run_health_checks(G: nx.DiGraph, restrictions: list | None = None) -> dict:
         "components": list(nx.weakly_connected_components(G)),
         "turn_restrictions": restrictions,
         "turn_restrictions_by_type": restriction_by_type,
+        "oneway_conflicts": oneway_conflicts,
+        "oneway_sink_nodes": oneway_sink_nodes,
     }
     issues["disconnected"] = len(issues["components"]) > 1
     return issues
