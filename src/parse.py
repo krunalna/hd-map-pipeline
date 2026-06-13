@@ -42,6 +42,34 @@ def build_graph(osm_data: dict) -> nx.DiGraph:
     return G
 
 
+def parse_restrictions(osm_data: dict) -> list[dict]:
+    """Extract turn restriction relations from raw OSM data."""
+    restrictions = []
+    for el in osm_data["elements"]:
+        if el["type"] != "relation":
+            continue
+        tags = el.get("tags", {})
+        if tags.get("type") != "restriction":
+            continue
+
+        members = el.get("members", [])
+        from_way = next((m["ref"] for m in members if m["role"] == "from" and m["type"] == "way"), None)
+        to_way = next((m["ref"] for m in members if m["role"] == "to" and m["type"] == "way"), None)
+        via_node = next((m["ref"] for m in members if m["role"] == "via" and m["type"] == "node"), None)
+
+        restriction_type = tags.get("restriction") or tags.get("restriction:conditional", "unknown")
+
+        if from_way and to_way:
+            restrictions.append({
+                "relation_id": el["id"],
+                "from_way": from_way,
+                "via_node": via_node,
+                "to_way": to_way,
+                "type": restriction_type,
+            })
+    return restrictions
+
+
 def clip_to_bbox(G: nx.DiGraph, bbox: dict) -> nx.DiGraph:
     in_bounds = {
         n for n in G.nodes

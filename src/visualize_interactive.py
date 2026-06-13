@@ -115,6 +115,32 @@ def visualize_interactive(
     layer_dead_ends.add_to(m)
     layer_isolated.add_to(m)
 
+    # --- turn restriction via nodes ---
+    layer_restrictions = folium.FeatureGroup(name="Turn restrictions", show=True)
+    for r in issues.get("turn_restrictions", []):
+        via = r["via_node"]
+        if via is None or via not in G.nodes:
+            continue
+        nd = G.nodes[via]
+        popup_html = (
+            f"<b>Turn Restriction</b><br>"
+            f"Type: <b>{r['type']}</b><br>"
+            f"From way: {r['from_way']}<br>"
+            f"To way: {r['to_way']}<br>"
+            f"Relation ID: {r['relation_id']}"
+        )
+        folium.CircleMarker(
+            location=[nd["lat"], nd["lon"]],
+            radius=8,
+            color="#6a0dad",
+            fill=True,
+            fill_color="#6a0dad",
+            fill_opacity=0.85,
+            popup=folium.Popup(popup_html, max_width=220),
+            tooltip=r["type"],
+        ).add_to(layer_restrictions)
+    layer_restrictions.add_to(m)
+
     # --- legend ---
     legend_html = f"""
     <div style="position:fixed; bottom:30px; left:30px; z-index:1000;
@@ -128,6 +154,7 @@ def visualize_interactive(
         <span style="color:#888; font-size:10px">&#9644; &#9644;</span> Missing lane tag<br>
         <span style="color:orange">&#9679;</span> Dead end ({len(dead_end_set)})<br>
         <span style="color:red">&#9679;</span> Isolated ({len(isolated_set)})<br>
+        <span style="color:#6a0dad">&#9679;</span> Turn restriction ({len(issues.get('turn_restrictions', []))})<br>
         <hr style="margin:4px 0">
         Components: {len(issues['components'])}
     </div>

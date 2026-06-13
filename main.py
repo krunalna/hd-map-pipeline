@@ -3,7 +3,7 @@ import json
 import os
 
 from src.ingest import query_osm, save_raw, geocode_location, FORT_SMITH_DOWNTOWN
-from src.parse import build_graph, clip_to_bbox
+from src.parse import build_graph, clip_to_bbox, parse_restrictions
 from src.health import run_health_checks
 from src.visualize import visualize
 from src.visualize_interactive import visualize_interactive
@@ -51,9 +51,11 @@ def main():
             json.dump({"bbox": bbox, "location": location}, f, indent=2)
 
     G = clip_to_bbox(build_graph(data), bbox)
+    restrictions = parse_restrictions(data)
     print(f"Graph: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
+    print(f"Turn restrictions: {len(restrictions)}")
 
-    issues = run_health_checks(G)
+    issues = run_health_checks(G, restrictions)
     print(f"Health check results:")
     print(f"  Isolated nodes     : {len(issues['isolated_nodes'])}")
     print(f"  Dead ends          : {len(issues['dead_ends'])}")
@@ -65,6 +67,10 @@ def main():
     for rc in sorted(issues["missing_lanes_by_class"]):
         count = len(issues["missing_lanes_by_class"][rc])
         print(f"    class {rc} ({class_labels.get(rc, 'other')}): {count} edges")
+    if issues["turn_restrictions_by_type"]:
+        print(f"  Turn restriction breakdown:")
+        for rtype, items in sorted(issues["turn_restrictions_by_type"].items()):
+            print(f"    {rtype}: {len(items)}")
 
     visualize(G, issues, location)
     if not args.no_interactive:

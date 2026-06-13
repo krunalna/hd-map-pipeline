@@ -1,7 +1,7 @@
 import networkx as nx
 
 
-def run_health_checks(G: nx.DiGraph) -> dict:
+def run_health_checks(G: nx.DiGraph, restrictions: list | None = None) -> dict:
     missing_lane_edges = [(u, v) for u, v, d in G.edges(data=True) if d.get("lanes") is None]
 
     # group missing lane edges by road class — lower tier = higher severity
@@ -10,12 +10,19 @@ def run_health_checks(G: nx.DiGraph) -> dict:
         rc = G[u][v].get("road_class", 8)
         missing_by_class.setdefault(rc, []).append((u, v))
 
+    restrictions = restrictions or []
+    restriction_by_type: dict[str, list] = {}
+    for r in restrictions:
+        restriction_by_type.setdefault(r["type"], []).append(r)
+
     issues = {
         "isolated_nodes": list(nx.isolates(G)),
         "dead_ends": [n for n in G.nodes if G.out_degree(n) == 0 and G.in_degree(n) > 0],
         "missing_lane_edges": missing_lane_edges,
         "missing_lanes_by_class": missing_by_class,
         "components": list(nx.weakly_connected_components(G)),
+        "turn_restrictions": restrictions,
+        "turn_restrictions_by_type": restriction_by_type,
     }
     issues["disconnected"] = len(issues["components"]) > 1
     return issues

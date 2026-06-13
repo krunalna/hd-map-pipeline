@@ -51,7 +51,8 @@ def query_osm(bbox: dict) -> dict:
     [out:json][timeout:25];
     way["highway"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']})->.roads;
     node(w.roads)->.nodes;
-    (.roads; .nodes;);
+    relation["type"="restriction"]({bbox['south']},{bbox['west']},{bbox['north']},{bbox['east']})->.restrictions;
+    (.roads; .nodes; .restrictions;);
     out body qt;
     """
 
@@ -81,6 +82,8 @@ if __name__ == "__main__":
     
     nodes = [e for e in data["elements"] if e["type"] == "node"]
     ways = [e for e in data["elements"] if e["type"] == "way"]
+    relations = [e for e in data["elements"] if e["type"] == "relation"]
     print(f"\nSummary:")
-    print(f"  Nodes : {len(nodes)}")
-    print(f"  Ways  : {len(ways)}")
+    print(f"  Nodes     : {len(nodes)}")
+    print(f"  Ways      : {len(ways)}")
+    print(f"  Relations : {len(relations)}")
